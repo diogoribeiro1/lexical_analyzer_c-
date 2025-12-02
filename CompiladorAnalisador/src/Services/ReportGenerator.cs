@@ -17,11 +17,31 @@ namespace CompiladorAnalisador.Services
         public void GenerateLexicalReport(List<Token> tokens, string inputPath)
         {
             var outputPath = _fileService.GetOutputPath(inputPath, ".LEX");
+            string fileName = Path.GetFileName(inputPath);
+
+            var categoryCTokens = tokens.Where(t => t.Code.StartsWith("idn")).ToList();
+            var uniqueSymbols = GroupUniqueSymbols(categoryCTokens);
+
+            var symbolIndexMap = uniqueSymbols
+                .Select((sym, idx) => new { sym.Lexeme, Index = idx + 1 })
+                .ToDictionary(x => x.Lexeme, x => x.Index);
 
             using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
             {
-                _reportHeader.WriteLexicalHeader(writer);
-                WriteTokensTable(writer, tokens);
+                _reportHeader.WriteLexicalHeader(writer, fileName);
+
+                foreach (var token in tokens)
+                {
+                    string indexStr = "";
+
+                    if (symbolIndexMap.ContainsKey(token.Lexeme))
+                    {
+                        indexStr = symbolIndexMap[token.Lexeme].ToString();
+                    }
+
+                    writer.WriteLine(
+                        $"Lexeme: {token.Lexeme}, Código: {token.Code}, ÍndiceTabSimb: {indexStr}, Linha: {token.Lines.First()}.");
+                }
             }
 
             Console.WriteLine($"Relatório lexical gerado: {outputPath}");
@@ -29,58 +49,38 @@ namespace CompiladorAnalisador.Services
 
         public void GenerateSymbolTableReport(List<Token> tokens, string inputPath)
         {
+            string fileName = Path.GetFileName(inputPath);
+
             var outputPath = _fileService.GetOutputPath(inputPath, ".TAB");
 
             var categoryCTokens = tokens
-            .Where(t => t.Code.StartsWith("idn"))
-            .ToList();
+                .Where(t => t.Code.StartsWith("idn"))
+                .ToList();
 
             var uniqueSymbols = GroupUniqueSymbols(categoryCTokens);
 
             using (var writer = new StreamWriter(outputPath, false, Encoding.UTF8))
             {
-                _reportHeader.WriteSymbolTableHeader(writer);
+                _reportHeader.WriteSymbolTableHeader(writer, fileName);
                 WriteSymbolTable(writer, uniqueSymbols);
             }
 
             Console.WriteLine($"Tabela de símbolos gerada: {outputPath}");
         }
 
-        private void WriteTokensTable(StreamWriter writer, List<Token> tokens)
-        {
-            writer.WriteLine("{0,-6} | {1,-6} | {2,-35}", "LINHA", "CÓD.", "LEXEMA");
-            writer.WriteLine(new string('-', 60));
-
-            foreach (var token in tokens)
-            {
-                writer.WriteLine("{0,-6} | {1,-6} | {2}",
-                    token.Lines.First(), 
-                    token.Code,
-                    token.Lexeme);
-            }
-        }
-
         private void WriteSymbolTable(StreamWriter writer, List<SymbolTableEntry> entries)
         {
-            writer.WriteLine("{0,-5} | {1,-5} | {2,-35} | {3,-4} | {4,-3} | {5,-3} | {6}",
-                "ENT.", "CÓD.", "LEXEMA", "TIPO", "QTD", "TRU", "LINHAS");
-            writer.WriteLine(new string('-', 100));
-
             for (int i = 0; i < entries.Count; i++)
             {
                 var entry = entries[i];
+                string linesStr = string.Join(", ", entry.Lines);
 
-                writer.WriteLine("{0,-5} | {1,-5} | {2,-35} | {3,-4} | {4,-3} | {5,-3} | {6}",
-                    i + 1,
-                    entry.Code,
-                    entry.Lexeme,
-                    entry.SymbolType,
-                    entry.OriginalSize,
-                    entry.TruncatedSize,
-                    entry.GetFormattedLines());
+                writer.WriteLine(
+                    $"Entrada: {i + 1}, Codigo: {entry.Code}, Lexeme: {entry.Lexeme}, QtdCharAntesTrunc: {entry.OriginalSize}, QtdCharDepoisTrunc: {entry.TruncatedSize}, TipoSimb: {entry.SymbolType}, Linhas: {{ {linesStr} }}.");
+                writer.WriteLine(new string('-', 71));
             }
         }
-        
+
         private List<SymbolTableEntry> GroupUniqueSymbols(List<Token> tokens)
         {
             var grouped = tokens
@@ -116,12 +116,6 @@ namespace CompiladorAnalisador.Services
             public int OriginalSize { get; set; }
             public int TruncatedSize { get; set; }
             public List<int> Lines { get; set; }
-
-            public string GetFormattedLines()
-            {
-                var top5 = Lines.Take(5);
-                return string.Join(", ", top5);
-            }
         }
     }
 
@@ -134,7 +128,7 @@ namespace CompiladorAnalisador.Services
         private const string MEMBER3 = "Diogo Ramos | diogo.ramos@ucsal.edu.br | 71 98686-7971";
         private const string MEMBER4 = "Atila Macedo | atila.macedo@ucsal.edu.br | 71 99251-9722";
 
-        public void WriteLexicalHeader(StreamWriter writer)
+        private void WriteMembers(StreamWriter writer)
         {
             writer.WriteLine("Código da Equipe: {0}", TEAM_CODE_SYMBOL);
             writer.WriteLine("Componentes:");
@@ -143,21 +137,20 @@ namespace CompiladorAnalisador.Services
             writer.WriteLine("  {0}", MEMBER3);
             writer.WriteLine("  {0}", MEMBER4);
             writer.WriteLine("");
-            writer.WriteLine("RELATÓRIO DE ANÁLISE LÉXICA");
-            writer.WriteLine(new string('=', 30));
         }
 
-        public void WriteSymbolTableHeader(StreamWriter writer)
+        public void WriteLexicalHeader(StreamWriter writer, string fileName)
         {
-            writer.WriteLine("Código da Equipe: {0}", TEAM_CODE_SYMBOL);
-            writer.WriteLine("Componentes:");
-            writer.WriteLine("  {0}", MEMBER1);
-            writer.WriteLine("  {0}", MEMBER2);
-            writer.WriteLine("  {0}", MEMBER3);
-            writer.WriteLine("  {0}", MEMBER4);
+            WriteMembers(writer);
+            writer.WriteLine($"RELATÓRIO DE ANÁLISE LÉXICA. Texto fonte analisado: {fileName}");
             writer.WriteLine("");
-            writer.WriteLine("RELATÓRIO DA TABELA DE SÍMBOLOS");
-            writer.WriteLine(new string('=', 30));
+        }
+
+        public void WriteSymbolTableHeader(StreamWriter writer, string fileName)
+        {
+            WriteMembers(writer);
+            writer.WriteLine($"RELATÓRIO DE ANÁLISE LÉXICA. Texto fonte analisado: {fileName}");
+            writer.WriteLine("");
         }
     }
 }

@@ -31,11 +31,7 @@ namespace CompiladorAnalisador.Models
             var top5 = Lines.OrderBy(x => x).Take(5);
             return string.Join(", ", top5);
         }
-
-        /// <summary>
-        /// Define o tipo do símbolo conforme a categoria IDN.
-        /// PRSxx e SRSxx não carregam tipo de dado.
-        /// </summary>
+        
         private string InferTypeFromCode(string code)
         {
             switch (code)

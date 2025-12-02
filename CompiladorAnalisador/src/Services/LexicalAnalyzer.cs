@@ -95,7 +95,7 @@ namespace CompiladorAnalisador.Services
                                 if (!_reader.EndOfStream && (char)_reader.Peek() == '=')
                                 {
                                     ConsumeChar();
-                                    return CreateToken(":=", "srs04"); // atribuição
+                                    return CreateToken(":=", "srs04");
                                 }
                                 return CreateToken(":", "srs03");
 
