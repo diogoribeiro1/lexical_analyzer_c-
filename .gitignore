@@ -1,0 +1,42 @@
+# Build results
+bin/
+obj/
+[Bb]uild/
+[Bb]uilds/
+out/
+
+# Visual Studio files
+.vs/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet packages
+*.nupkg
+packages/
+*.snupkg
+
+# Logs
+*.log
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Rider
+.idea/
+
+# Visual Studio Code
+.vscode/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Others
+*.cache
+*.dbmdl
+*.bak
+*.orig

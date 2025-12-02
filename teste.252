@@ -1,0 +1,47 @@
+program meuPrograma
+declarations
+    varType integer: x, y;
+    varType real: r;
+    varType string: mensagem;
+    varType character: letra;
+    varType boolean: ativo
+endDeclarations
+
+functions
+
+funcType void: minhaFuncao( paramType integer: n )
+{
+    print "Teste OK"
+    ;
+    x := 10
+    ;
+    r := 5.5 ;
+    y := 5
+    ;
+    if ( x > y )
+    {
+        print "Entrou no If"
+    }
+    endIf
+    ;
+    while ( x > 0 )
+    {
+        x := x - 1
+    }
+    endWhile
+    ;
+    mensagem := "metade"
+    ;
+    letra := 'A'
+    ;
+    ativo := true
+    ;
+    print mensagem
+    ;
+    return
+}
+endFunction
+
+endFunctions
+
+endProgram
