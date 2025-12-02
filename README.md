@@ -68,8 +68,6 @@ dotnet run -- "caminho/do/arquivo.252"
 
 ## 👨‍💻 Autores (Equipe EQ03)
 
-Informações extraídas do cabeçalho dos relatórios:
-
 * Kauã Vilas Boas
 * Gabriel Cunha
 * Diogo Ramos
