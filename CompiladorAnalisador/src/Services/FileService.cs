@@ -1,11 +1,14 @@
+using System;
+using System.IO;
+
 namespace CompiladorAnalisador.Services
 {
     public class FileService
     {
         public StreamReader OpenFile(string path)
         {
-            ValidateFile(path);
             var fullPath = GetFullPath(path);
+            ValidateFile(fullPath);
             return new StreamReader(fullPath);
         }
 
@@ -21,15 +24,14 @@ namespace CompiladorAnalisador.Services
 
         public string GetOutputPath(string inputPath, string extension)
         {
-            var projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\.."));
+            var fullInputPath = GetFullPath(inputPath);
 
-            var outputDirectory = Path.Combine(projectRoot, "Output", "Report");
+            var directory = Path.GetDirectoryName(fullInputPath)
+                           ?? Directory.GetCurrentDirectory();
 
-            Directory.CreateDirectory(outputDirectory);
+            var baseFileName = Path.GetFileNameWithoutExtension(fullInputPath);
 
-            var baseFileName = Path.GetFileNameWithoutExtension(inputPath);
-
-            return Path.Combine(outputDirectory, baseFileName + extension);
+            return Path.Combine(directory, baseFileName + extension);
         }
 
         private string GetFullPath(string path)

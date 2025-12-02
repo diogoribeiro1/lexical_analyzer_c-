@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using CompiladorAnalisador.Models;
 using CompiladorAnalisador.Util;
@@ -39,12 +40,14 @@ namespace CompiladorAnalisador.Services
                 _reader?.Dispose();
             }
 
+            InferSymbolTypesFromDeclarations();
             return _tokens.ToList();
         }
 
         private Token GetNextToken()
         {
             var currentAtom = new StringBuilder();
+            int atomLength = 0; // Tamanho total do átomo (antes da truncagem)
             char ch;
             _currentState = 0;
 
@@ -146,7 +149,9 @@ namespace CompiladorAnalisador.Services
 
                     case 1:
                         ch = ConsumeChar();
-                        currentAtom.Append(ch);
+                        atomLength++;
+                        if (currentAtom.Length < 35)
+                            currentAtom.Append(ch);
 
                         char nx = (char)_reader.Peek();
 
@@ -156,14 +161,15 @@ namespace CompiladorAnalisador.Services
                             string lower = atom.ToLower();
 
                             if (Constants.ReservedWords.Dictionary.ContainsKey(lower))
-                                return CreateToken(atom, Constants.ReservedWords.Dictionary[lower]);
+                                return CreateToken(atom, Constants.ReservedWords.Dictionary[lower], atomLength);
 
                             string code = "idn02";
 
                             if (_tokens.Count > 0)
                             {
                                 var last = _tokens[_tokens.Count - 1];
-                                if (last.Lexeme.Equals("program", StringComparison.OrdinalIgnoreCase))
+
+                                if (last.Lexeme.Equals("PROGRAM", StringComparison.OrdinalIgnoreCase))
                                 {
                                     code = "idn01";
                                 }
@@ -173,7 +179,7 @@ namespace CompiladorAnalisador.Services
                                     var t2 = _tokens[_tokens.Count - 2];
                                     var t3 = last;
 
-                                    if (t1.Lexeme.Equals("funcType", StringComparison.OrdinalIgnoreCase) &&
+                                    if (t1.Lexeme.Equals("FUNCTYPE", StringComparison.OrdinalIgnoreCase) &&
                                         IsTypeSpecification(t2.Lexeme) &&
                                         t3.Lexeme == ":")
                                     {
@@ -182,14 +188,16 @@ namespace CompiladorAnalisador.Services
                                 }
                             }
 
-                            return CreateToken(atom, code);
+                            return CreateToken(atom, code, atomLength);
                         }
 
                         break;
 
                     case 2:
                         ch = ConsumeChar();
-                        currentAtom.Append(ch);
+                        atomLength++;
+                        if (currentAtom.Length < 35)
+                            currentAtom.Append(ch);
 
                         char nxNum = (char)_reader.Peek();
                         if (nxNum == '.')
@@ -198,7 +206,7 @@ namespace CompiladorAnalisador.Services
                         }
                         else if (!char.IsDigit(nxNum))
                         {
-                            return CreateToken(currentAtom.ToString(), "idn04");
+                            return CreateToken(currentAtom.ToString(), "idn04", atomLength);
                         }
 
                         break;
@@ -225,7 +233,9 @@ namespace CompiladorAnalisador.Services
 
                     case 4:
                         ch = ConsumeChar();
-                        currentAtom.Append(ch);
+                        atomLength++;
+                        if (currentAtom.Length < 35)
+                            currentAtom.Append(ch);
 
                         if (char.IsDigit((char)_reader.Peek()))
                         {
@@ -236,11 +246,13 @@ namespace CompiladorAnalisador.Services
 
                     case 5:
                         ch = ConsumeChar();
-                        currentAtom.Append(ch);
+                        atomLength++;
+                        if (currentAtom.Length < 35)
+                            currentAtom.Append(ch);
 
                         char nxFloat = (char)_reader.Peek();
                         if (!char.IsDigit(nxFloat))
-                            return CreateToken(currentAtom.ToString(), "idn05");
+                            return CreateToken(currentAtom.ToString(), "idn05", atomLength);
 
                         break;
 
@@ -284,29 +296,38 @@ namespace CompiladorAnalisador.Services
 
                     case 10:
                         ConsumeChar();
+                        atomLength = 1;
                         _currentState = 11;
                         break;
 
                     case 11:
                         ch = ConsumeChar();
+                        atomLength++;
+
                         if (ch == '"')
-                            return CreateToken($"\"{currentAtom}\"", "idn06");
+                            return CreateToken($"\"{currentAtom}\"", "idn06", atomLength);
 
                         if (ch == '\n' || ch == '\uffff')
                             return null;
 
-                        currentAtom.Append(ch);
+                        if (currentAtom.Length < 35)
+                            currentAtom.Append(ch);
                         break;
 
                     case 12:
                         ConsumeChar();
+                        atomLength = 1;
+
                         ch = ConsumeChar();
-                        currentAtom.Append(ch);
+                        atomLength++;
+                        if (currentAtom.Length < 35)
+                            currentAtom.Append(ch);
 
                         if ((char)_reader.Peek() == '\'')
                         {
                             ConsumeChar();
-                            return CreateToken($"'{currentAtom}'", "idn07");
+                            atomLength++;
+                            return CreateToken($"'{currentAtom}'", "idn07", atomLength);
                         }
 
                         return null;
@@ -348,9 +369,12 @@ namespace CompiladorAnalisador.Services
             return CreateToken(lex, code);
         }
 
-        private Token CreateToken(string lexeme, string code)
+        private Token CreateToken(string lexeme, string code, int originalLength = -1)
         {
-            var token = new Token(lexeme, code, _currentLine, lexeme.Length);
+            if (originalLength <= 0)
+                originalLength = lexeme.Length;
+
+            var token = new Token(lexeme.ToUpper(), code, _currentLine, originalLength);
             return token;
         }
 
@@ -359,14 +383,127 @@ namespace CompiladorAnalisador.Services
         private static bool IsTypeSpecification(string lexeme)
         {
             return lexeme.Equals("integer", StringComparison.OrdinalIgnoreCase) ||
-                lexeme.Equals("real", StringComparison.OrdinalIgnoreCase) ||
-                lexeme.Equals("string", StringComparison.OrdinalIgnoreCase) ||
-                lexeme.Equals("boolean", StringComparison.OrdinalIgnoreCase) ||
-                lexeme.Equals("character", StringComparison.OrdinalIgnoreCase) ||
-                lexeme.Equals("void", StringComparison.OrdinalIgnoreCase);
+                   lexeme.Equals("real", StringComparison.OrdinalIgnoreCase) ||
+                   lexeme.Equals("string", StringComparison.OrdinalIgnoreCase) ||
+                   lexeme.Equals("boolean", StringComparison.OrdinalIgnoreCase) ||
+                   lexeme.Equals("character", StringComparison.OrdinalIgnoreCase) ||
+                   lexeme.Equals("void", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsWhiteSpace(char c) =>
             c == ' ' || c == '\n' || c == '\t' || c == '\r';
+
+        private void InferSymbolTypesFromDeclarations()
+        {
+            var symbolTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            for (int i = 0; i < _tokens.Count; i++)
+            {
+                var tk = _tokens[i];
+
+                if (tk.Lexeme == "VARTYPE" && i + 3 < _tokens.Count)
+                {
+                    var typeToken = _tokens[i + 1];
+                    var colon = _tokens[i + 2];
+
+                    if (colon.Lexeme != ":")
+                        continue;
+
+                    string tipoSimb = MapTypeSpecification(typeToken.Lexeme);
+                    if (tipoSimb == "-") continue;
+
+                    int j = i + 3;
+                    while (j < _tokens.Count)
+                    {
+                        var t = _tokens[j];
+
+                        if (t.Lexeme == ";" || t.Lexeme == "ENDDECLARATIONS")
+                            break;
+
+                        if (t.Code == "idn02")
+                        {
+                            symbolTypeMap[t.Lexeme] = tipoSimb;
+                        }
+
+                        j++;
+                    }
+                }
+
+                if (tk.Lexeme == "FUNCTYPE" && i + 3 < _tokens.Count)
+                {
+                    var typeToken = _tokens[i + 1];
+                    var colon = _tokens[i + 2];
+                    var funcName = _tokens[i + 3];
+
+                    if (colon.Lexeme != ":" || funcName.Code != "idn03")
+                        continue;
+
+                    string tipoSimb = MapTypeSpecification(typeToken.Lexeme);
+                    if (tipoSimb == "-") continue;
+
+                    symbolTypeMap[funcName.Lexeme] = tipoSimb;
+                }
+                if (tk.Lexeme == "PARAMTYPE" && i + 3 < _tokens.Count)
+                {
+                    var typeToken = _tokens[i + 1];
+                    var colon = _tokens[i + 2];
+
+                    if (colon.Lexeme != ":")
+                        continue;
+
+                    string tipoSimb = MapTypeSpecification(typeToken.Lexeme);
+                    if (tipoSimb == "-") continue;
+
+                    int j = i + 3;
+                    while (j < _tokens.Count)
+                    {
+                        var t = _tokens[j];
+
+                        // fim da lista de parâmetros: fecha parêntese ou vírgula/; dependendo da gramática
+                        if (t.Lexeme == ")" || t.Lexeme == ";" || t.Lexeme == "ENDDECLARATIONS")
+                            break;
+
+                        if (t.Code == "idn02") // parâmetros são identificadores como variáveis
+                        {
+                            symbolTypeMap[t.Lexeme] = tipoSimb; // N -> IN
+                        }
+
+                        j++;
+                    }
+                }
+            }
+
+            foreach (var token in _tokens)
+            {
+                if (token.Code == "idn01" || token.Code == "idn02" || token.Code == "idn03")
+                {
+                    if (symbolTypeMap.TryGetValue(token.Lexeme, out var symType))
+                    {
+                        token.SymbolType = symType;
+                    }
+                    else
+                    {
+                    }
+                }
+                else
+                {
+                }
+            }
+        }
+
+        private static string MapTypeSpecification(string lexeme)
+        {
+            switch (lexeme.ToUpper())
+            {
+                case "INTEGER": return "IN";
+                case "REAL": return "FL";
+                case "STRING": return "ST";
+                case "CHARACTER": return "CH";
+                case "BOOLEAN": return "BL";
+                case "VOID": return "VD";
+                default: return "-";
+            }
+        }
+
     }
 }
